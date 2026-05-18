@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Геймификация: Информационные сети</title>
+    <!-- Подключаем Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Иконки -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Подключаем Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        body { background-color: #f4f7f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .screen { display: none; padding-top: 50px; }
+        .active-screen { display: block; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .navbar { background-color: #2c3e50 !important; }
+        .xp-bar { height: 25px; border-radius: 12px; }
+        .badge-icon { font-size: 2rem; color: #f1c40f; }
+        .nav-link { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <!-- Навигация -->
+    <nav id="mainNav" class="navbar navbar-expand-lg navbar-dark mb-4 d-none">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="bi bi-controller me-2"></i>NetGame LMS</a>
+            <div class="navbar-nav">
+                <a class="nav-link" onclick="showScreen('profile')">Профиль</a>
+                <a class="nav-link" onclick="showScreen('tasks')">Задания</a>
+                <a class="nav-link" onclick="showScreen('rating')">Рейтинг</a>
+                <a class="nav-link text-danger" onclick="logout()">Выход</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <!-- ЭКРАН 1: АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ -->
+        <section id="auth" class="screen active-screen">
+            <div class="row justify-content-center">
+                <div class="col-md-5">
+                    <div class="card p-4">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-shield-lock display-4 text-primary"></i>
+                            <h3 class="mt-2">Вход в систему</h3>
+                        </div>
+
+                        <!-- Вкладки -->
+                        <ul class="nav nav-pills nav-justified mb-4" id="authTabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="tab-login" onclick="toggleAuth('login')" style="cursor:pointer;">Вход</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="tab-register" onclick="toggleAuth('register')" style="cursor:pointer;">Регистрация</a>
+                            </li>
+                        </ul>
+
+                        <!-- Форма ВХОДА -->
+                        <form id="form-login" onsubmit="loginUser(event)">
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="login-email" class="form-control" placeholder="student@university.edu" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Пароль</label>
+                                <input type="password" id="login-password" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 p-2 mb-2" id="login-btn">Войти</button>
+                        </form>
+
+                        <!-- Форма РЕГИСТРАЦИИ -->
+                        <form id="form-register" class="d-none" onsubmit="registerUser(event)">
+                            <div class="mb-3">
+                                <label class="form-label">ФИО</label>
+                                <input type="text" id="reg-name" class="form-control" placeholder="Иванов Иван Иванович" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="reg-email" class="form-control" placeholder="student@university.edu" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Пароль</label>
+                                <input type="password" id="reg-password" class="form-control" placeholder="Минимум 6 символов" required minlength="6">
+                            </div>
+                            <button type="submit" class="btn btn-success w-100 p-2 mb-2" id="reg-btn">Создать аккаунт</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ЭКРАН 2: ПРОФИЛЬ -->
+        <section id="profile" class="screen">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card p-4 text-center mb-4">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Network" alt="avatar" class="rounded-circle mx-auto mb-3" style="width: 150px;">
+                        <h4 id="userNameDisplay">Загрузка...</h4>
+                        <span class="badge bg-dark mb-2 fs-6" id="userVariantDisplay">Вариант: ?</span>
+                        <p class="text-muted" id="userLevelDisplay">Уровень ?: Загрузка...</p>
+                        
+                        <div class="progress xp-bar mb-2">
+                            <div id="userXpBar" class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="1000">0 / 1000 XP</div>
+                        </div>
+                        <small id="userXpText">До следующего уровня: ? XP</small>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card p-4">
+                        <h5>Твои достижения</h5>
+                        <div class="d-flex gap-4 mt-3">
+                            <div class="text-center">
+                                <i class="bi bi-lightning-fill badge-icon"></i>
+                                <p class="small">Первый вход</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ЭКРАН 3: ЗАДАНИЯ (Оставлен без изменений для следующего этапа) -->
+        <section id="tasks" class="screen">
+            <h2 class="mb-4">Доступные квесты</h2>
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 p-4 border-start border-primary border-5">
+                        <div class="d-flex justify-content-between">
+                            <h5>Лаб №1: Статическая маршрутизация</h5>
+                            <span class="badge bg-primary">+300 XP</span>
+                        </div>
+                        <p class="text-muted mt-2">Выполните задание в Packet Tracer. После достижения 100% Activity Wizard выдаст вам секретный код.</p>
+                        
+                        <div class="mb-3">
+                            <button class="btn btn-outline-primary btn-sm"><i class="bi bi-download me-1"></i>Скачать .pka</button>
+                        </div>
+                        
+                        <div class="mt-auto bg-light p-3 rounded">
+                            <label class="form-label small fw-bold text-secondary">Сдача работы (Секретный код PT)</label>
+                            <div class="input-group">
+                                <input type="text" id="ptSecretCode" class="form-control form-control-sm" placeholder="Например: Иванов-A7F9B">
+                                <button class="btn btn-success btn-sm" onclick="verifyPTCode()">Проверить</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ЭКРАН 4: РЕЙТИНГ (Оставлен без изменений для следующего этапа) -->
+        <section id="rating" class="screen">
+            <div class="card p-4">
+                <h2 class="mb-4"><i class="bi bi-award me-2 text-warning"></i>Глобальный рейтинг</h2>
+                <p>Здесь будет динамический рейтинг из базы...</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- JS Логика (Supabase) -->
+   <script>
+        // ==========================================
+        // 1. ИНИЦИАЛИЗАЦИЯ SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://hlomyllbojukmiuupmkg.supabase.co/rest/v1/';
+        const SUPABASE_ANON_KEY = 'sb_publishable_rQVl5k6tTq6KltqIva37rw_-gLN9wie';
+        
+        // ВАЖНО: называем переменную supabaseClient, чтобы избежать конфликта имен
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUser = null;
+
+        // ==========================================
+        // 2. АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ
+        // ==========================================
+        
+        // Проверка: авторизован ли пользователь
+        async function checkSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                await loadUserProfile(); 
+                enterSystem(); 
+            }
+        }
+        document.addEventListener('DOMContentLoaded', checkSession);
+
+        // Регистрация
+        async function registerUser(event) {
+            event.preventDefault();
+            const btn = document.getElementById('reg-btn');
+            btn.disabled = true; btn.innerText = "Загрузка...";
+
+            const fullName = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: { data: { full_name: fullName } } 
+            });
+
+            if (error) {
+                alert("Ошибка регистрации: " + error.message);
+            } else {
+                alert("Регистрация успешна! Теперь выполните вход.");
+                document.getElementById('form-register').reset();
+                toggleAuth('login');
+            }
+            btn.disabled = false; btn.innerText = "Создать аккаунт";
+        }
+
+        // Вход
+        async function loginUser(event) {
+            event.preventDefault();
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true; btn.innerText = "Загрузка...";
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                alert("Ошибка входа: Неверный логин или пароль");
+            } else {
+                currentUser = data.user;
+                await loadUserProfile();
+                enterSystem();
+            }
+            btn.disabled = false; btn.innerText = "Войти";
+        }
+
+        // Выход
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            currentUser = null;
+            document.getElementById('mainNav').classList.add('d-none');
+            showScreen('auth');
+        }
+
+        // ==========================================
+        // 3. РАБОТА С БАЗОЙ ДАННЫХ (PROFILES)
+        // ==========================================
+        
+        async function loadUserProfile() {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (error) {
+                console.error("Ошибка загрузки профиля:", error);
+                return;
+            }
+
+            document.getElementById('userNameDisplay').innerText = data.full_name || 'Студент';
+            document.getElementById('userVariantDisplay').innerText = `Вариант: ${data.variant_tag || 'Не назначен'}`;
+            document.getElementById('userLevelDisplay').innerText = `Уровень ${data.level}: ${data.rank_name}`;
+            
+            const maxXp = data.level * 1000;
+            const percentage = (data.xp / maxXp) * 100;
+            
+            document.getElementById('userXpBar').style.width = `${percentage}%`;
+            document.getElementById('userXpBar').innerText = `${data.xp} / ${maxXp} XP`;
+            document.getElementById('userXpText').innerText = `До следующего уровня: ${maxXp - data.xp} XP`;
+        }
+
+        // ==========================================
+        // 4. ИНТЕРФЕЙСНЫЕ ФУНКЦИИ
+        // ==========================================
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
+            
+            if(screenId === 'rating') {
+                // loadLeaderboard(); // напишем на следующем шаге
+            }
+        }
+
+        function toggleAuth(type) {
+            if(type === 'login') {
+                document.getElementById('form-login').classList.remove('d-none');
+                document.getElementById('form-register').classList.add('d-none');
+                document.getElementById('tab-login').classList.add('active');
+                document.getElementById('tab-register').classList.remove('active');
+            } else {
+                document.getElementById('form-login').classList.add('d-none');
+                document.getElementById('form-register').classList.remove('d-none');
+                document.getElementById('tab-login').classList.remove('active');
+                document.getElementById('tab-register').classList.add('active');
+            }
+        }
+
+        function enterSystem() {
+            document.getElementById('mainNav').classList.remove('d-none');
+            showScreen('profile');
+        }
+
+        function verifyPTCode() {
+            alert("Функция проверки кодов будет подключена на следующем этапе!");
+        }
+    </script>
+
+    <!-- Подключаем JS Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
