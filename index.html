@@ -305,8 +305,69 @@
             showScreen('profile');
         }
 
-        function verifyPTCode() {
-            alert("Функция проверки кодов будет подключена на следующем этапе!");
+         async function verifyPTCode() {
+            const codeInput = document.getElementById('ptSecretCode').value.trim();
+            
+            if(!codeInput) {
+                alert("Пожалуйста, введите код из Packet Tracer!");
+                return;
+            }
+
+            // Ищем код в таблице task_variants
+            const { data: variant, error: searchError } = await supabaseClient
+                .from('task_variants')
+                .select('*')
+                .eq('secret_code', codeInput)
+                .single();
+
+            // Если код не найден
+            if (searchError || !variant) {
+                alert("❌ Неверный код! Проверьте правильность или убедитесь, что Activity Wizard пройден на 100%.");
+                return;
+            }
+
+            // Если код верный: 
+            // 1. Получаем текущие данные профиля (чтобы узнать текущий XP)
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('xp, level')
+                .eq('id', currentUser.id)
+                .single();
+
+            const rewardXp = 300; // Награда за лабу
+            const newXp = profile.xp + rewardXp;
+            
+            // Простейшая логика повышения уровня (каждые 1000 XP)
+            let newLevel = profile.level;
+            if (newXp >= profile.level * 1000) {
+                newLevel += 1;
+                alert(`🎉 ПОЗДРАВЛЯЕМ! Вы достигли ${newLevel} уровня!`);
+            }
+
+            // 2. Обновляем XP и уровень в профиле студента
+            const { error: updateError } = await supabaseClient
+                .from('profiles')
+                .update({ xp: newXp, level: newLevel })
+                .eq('id', currentUser.id);
+
+            if (updateError) {
+                alert("Ошибка при сохранении опыта. Проверь отключен ли RLS в таблице profiles!");
+                return;
+            }
+
+            // 3. Записываем факт сдачи в таблицу submissions (для преподавателя)
+            await supabaseClient.from('submissions').insert({
+                user_id: currentUser.id,
+                task_id: variant.task_id,
+                status: 'completed'
+            });
+
+            // 4. Успех! Очищаем поле и обновляем визуал
+            alert("✅ Успешно! Код подтвержден. Вам начислено +300 XP!");
+            document.getElementById('ptSecretCode').value = "";
+            
+            // Перерисовываем профиль, чтобы полоска опыта заполнилась
+            await loadUserProfile();
         }
     </script>
 
